@@ -152,7 +152,7 @@ case "$1" in
     rabbitmq:start         Start the rabbitmq docker container if it isn't running
     rabbitmq:stop          Stop the rabbitmq docker container
     rabbitmq:status        Shows status of rabbitmq
-    rabbitmq:list          List all databases
+    rabbitmq:list          List all virtual hosts
 EOF
     ;;
 esac
