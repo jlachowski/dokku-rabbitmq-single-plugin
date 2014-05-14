@@ -1,0 +1,158 @@
+#!/bin/bash
+set -e;
+
+APP=$2
+
+PLUGIN_NAME="rabbitmq-single"
+PLUGIN_ALIAS="broker"
+HOST_DIR="$DOKKU_ROOT/.$PLUGIN_NAME"
+HOST_APP_DIR="$DOKKU_ROOT/.$PLUGIN_NAME/$APP"
+CONTAINER_IMAGE="jlachowski/rabbitmq-single"
+CONTAINER_NAME="${PLUGIN_NAME}"
+RABBITMQ_PORT=5672
+RABBITMQ_ADMIN_PORT=15672
+
+check_exists() {
+  if [[ ! -d "$DOKKU_ROOT/$APP" ]]; then
+    echo "App must exist before creating rabbitmq vhost for it"
+    exit 1
+  fi
+}
+
+check_app() {
+  if [[ -z "$APP" ]]; then
+    echo "You must specify an app name"
+    exit 1
+  fi
+}
+
+check_container() {
+  if [[ -z "$id" ]]; then
+    echo "Rabbitmq container not started cannot continue. Start with dokku rabbitmq:start"
+    exit 1
+  fi
+}
+
+id=$(docker ps | grep "$CONTAINER_IMAGE":latest |  awk '{print $1}')
+if [[ -n "$id" ]]; then
+  rabbitmq_private_ip=$(docker inspect ${id} | grep IPAddress | awk '{ print $2 }' | tr -d ',"')
+fi
+
+case "$1" in
+  rabbitmq:admin_console)
+    check_container
+    #TODO: run admin console here 
+    ;;
+  rabbitmq:console)
+    check_container
+    check_app
+    check_exists
+
+    #TODO: run console here
+    ;;
+  rabbitmq:create)
+    check_container
+    check_app
+    check_exists
+
+    app_pw_file="$HOST_DIR/pass_$APP"
+    if [[ -e "${app_pw_file}" ]]; then
+        app_pw=$(cat "${app_pw_file}")
+    else
+        app_pw=$(openssl rand -base64 32|base64)
+        echo $admin_pw > "${app_pw_file}"
+        chmod 600 "${app_pw_file}"
+    fi
+    admin_pw=$(cat "$HOST_DIR/admin_pw")
+
+    # TODO: create new virtual host here
+    dokku rabbitmq:link $APP
+    echo
+    echo "-----> Rabbitmq virtual host for $APP created"
+    ;;
+  rabbitmq:link)
+    check_container
+    check_app
+    check_exists
+    
+    app_pw=$(cat "$HOST_DIR/pass_$APP")
+    dokku link:create "$APP" "$CONTAINER_NAME" "$PLUGIN_ALIAS"
+    # Write BROKER_URL to app's ENV file using dokku command
+    dokku config:set $APP "BROKER_SCHEME=amqp" "BROKER_USERNAME=$APP" "BROKER_PASSWORD=$app_pw" "BROKER_PATH=//$APP"
+    echo
+    echo "-----> $APP linked to $CONTAINER_NAME container"
+    ;;
+  rabbitmq:delete)
+    check_container
+    check_app
+    check_exists
+
+    admin_pw=$(cat "$HOST_DIR/admin_pw")
+    #TODO: unlink $APP, remove it's virtual host and password file
+    #dokku rabbitmq:link $APP
+    #dokku config:unset "$APP" DATABASE_URL
+    echo
+    echo "-----> Rabbitmq virtual host for $APP removed"
+    ;;
+  rabbitmq:list)
+    check_container
+    #TODO: list virtual hosts here
+    ;;
+  rabbitmq:start)
+    if [[ "$id" != "" ]]; then
+        echo "Postgresql container already running with ID: ${id}"
+    else
+        image=$(docker images | grep "$CONTAINER_IMAGE" |  awk '{print $3}')
+        if [[ -z $image ]]; then
+            echo "Rabbitmq image not found... Did you run 'dokku plugins-install' ?"
+            exit 1
+        fi
+        if [[ ! -d "$HOST_DIR" ]]; then
+            mkdir -p "$HOST_DIR"
+        fi
+        # Check if an existing storage volume exists
+        if [[ -d "$HOST_DIR/volume" ]]; then
+            echo
+            echo "-----> Reusing rabbitmq storage"
+        else
+            mkdir -p "$HOST_DIR/volume"
+        fi
+
+        if [[ -e "$HOST_DIR/admin_pw" ]]; then
+            admin_pw=$(cat "$HOST_DIR/admin_pw")
+        else
+            admin_pw=$(openssl rand -base64 32|base64)
+            echo $admin_pw > "$HOST_DIR/admin_pw"
+            chmod 600 "$HOST_DIR/admin_pw"
+        fi
+        volume="$HOST_DIR/volume:/opt/rabbitmq"
+        # Launch container
+        id=$(docker run -v $volume --name $CONTAINER_NAME -d $CONTAINER_IMAGE /usr/bin/start-rabbitmq.sh $admin_pw)
+        echo
+        echo "-----> Rabbitmq container started: $CONTAINER_NAME (ID: ${id})"
+    fi
+    ;;
+  rabbitmq:stop)
+    check_container
+    docker stop ${id}
+    ;;
+  rabbitmq:status)
+    if [[ "$id" != "" ]]; then
+      echo "Rabbitmq container running with ID: ${id}"
+    else
+      echo "Rabbitmq container not running"
+    fi
+    ;;
+  help)
+    cat && cat<<EOF
+    rabbitmq:admin_console Launch a rabbitmq console as admin user
+    rabbitmq:console <app> Launch a rabbitmq console for a given app
+    rabbitmq:create <app>  Create a rabbitmq virtual host
+    rabbitmq:delete <app>  Delete specified rabbitmq database
+    rabbitmq:start         Start the rabbitmq docker container if it isn't running
+    rabbitmq:stop          Stop the rabbitmq docker container
+    rabbitmq:status        Shows status of rabbitmq
+    rabbitmq:list          List all databases
+EOF
+    ;;
+esac
