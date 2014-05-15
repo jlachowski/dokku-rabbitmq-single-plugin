@@ -11,6 +11,7 @@ CONTAINER_IMAGE="jlachowski/rabbitmq-single"
 CONTAINER_NAME="${PLUGIN_NAME}"
 RABBITMQ_PORT=5672
 RABBITMQ_ADMIN_PORT=15672
+RABBITMQ_ADMIN='admin'
 
 check_exists() {
   if [[ ! -d "$DOKKU_ROOT/$APP" ]]; then
@@ -37,6 +38,15 @@ id=$(docker ps | grep "$CONTAINER_IMAGE":latest |  awk '{print $1}')
 if [[ -n "$id" ]]; then
   rabbitmq_private_ip=$(docker inspect ${id} | grep IPAddress | awk '{ print $2 }' | tr -d ',"')
 fi
+
+add_vhost() {
+    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT $rabbitmq_private_ip/api/vhosts/$2
+}
+
+add_user() {
+    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d\'{"password":"$4", "tags":"" }\' $rabbitmq_private_ip/api/users/$3 
+    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d\'{"configure":".*","write":".*","read":".*"}\' $rabbitmq_private_ip/api/permissions/$2/$3
+}
 
 case "$1" in
   rabbitmq:admin_console)
@@ -65,7 +75,9 @@ case "$1" in
     fi
     admin_pw=$(cat "$HOST_DIR/admin_pw")
 
-    # TODO: create new virtual host here
+    # TODO: create new virtual host rabbitmq_private_ip
+    add_vhost "$admin_pw" "host_$APP"
+    add_user "$admin_pw" "host_$APP" $APP "$app_pw" 
     dokku rabbitmq:link $APP
     echo
     echo "-----> Rabbitmq virtual host for $APP created"
@@ -78,7 +90,7 @@ case "$1" in
     app_pw=$(cat "$HOST_DIR/pass_$APP")
     dokku link:create "$APP" "$CONTAINER_NAME" "$PLUGIN_ALIAS"
     # Write BROKER_URL to app's ENV file using dokku command
-    dokku config:set $APP "BROKER_SCHEME=amqp" "BROKER_USERNAME=$APP" "BROKER_PASSWORD=$app_pw" "BROKER_PATH=//$APP"
+    dokku config:set $APP "BROKER_SCHEME=amqp" "BROKER_USERNAME=$APP" "BROKER_PASSWORD=$app_pw" "BROKER_PATH=/host_$APP"
     echo
     echo "-----> $APP linked to $CONTAINER_NAME container"
     ;;
