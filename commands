@@ -44,7 +44,7 @@ add_vhost() {
 }
 
 add_user() {
-    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d'{"password":"$4", "tags":"" }' http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/users/$3 
+    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d'{"password":"$4", "tags":"administrator"}' http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/users/$3 
     curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d'{"configure":".*","write":".*","read":".*"}' http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/permissions/$2/$3
 }
 
@@ -101,8 +101,7 @@ case "$1" in
 
     admin_pw=$(cat "$HOST_DIR/admin_pw")
     #TODO: unlink $APP, remove it's virtual host and password file
-    #dokku rabbitmq:link $APP
-    #dokku config:unset "$APP" DATABASE_URL
+    dokku config:unset $APP BROKER
     echo
     echo "-----> Rabbitmq virtual host for $APP removed"
     ;;
