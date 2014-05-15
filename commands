@@ -40,12 +40,12 @@ if [[ -n "$id" ]]; then
 fi
 
 add_vhost() {
-    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT $rabbitmq_private_ip/api/vhosts/$2
+    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/vhosts/$2
 }
 
 add_user() {
-    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d\'{"password":"$4", "tags":"" }\' $rabbitmq_private_ip/api/users/$3 
-    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d\'{"configure":".*","write":".*","read":".*"}\' $rabbitmq_private_ip/api/permissions/$2/$3
+    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d\'{"password":"$4", "tags":"" }\' http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/users/$3 
+    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d\'{"configure":".*","write":".*","read":".*"}\' http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/permissions/$2/$3
 }
 
 case "$1" in
