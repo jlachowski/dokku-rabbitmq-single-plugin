@@ -106,6 +106,7 @@ case "$1" in
     app_pw_file="$HOST_DIR/pass_$APP"
     if [[ -e "${app_pw_file}" ]]; then
         rm -f "$app_pw_file"
+    fi
     dokku config:unset $APP BROKER_SCHEME BROKER_USERNAME BROKER_PASSWORD BROKER_PATH
     echo
     echo "-----> Rabbitmq virtual host for $APP removed"
