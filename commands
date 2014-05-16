@@ -44,7 +44,7 @@ add_vhost() {
 }
 
 add_user() {
-    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d'{"password":"$4", "tags":"administrator"}' http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/users/$3 
+    curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d'{"password":"$4", "tags":""}' http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/users/$3 
     curl -i -u $RABBITMQ_ADMIN:$1 -H "content-type:application/json" -XPUT -d'{"configure":".*","write":".*","read":".*"}' http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/permissions/$2/$3
 }
 
@@ -77,7 +77,7 @@ case "$1" in
 
     # TODO: create new virtual host rabbitmq_private_ip
     add_vhost "$admin_pw" "host_$APP"
-    add_user "$admin_pw" "host_$APP" $APP "$app_pw" 
+    add_user "$admin_pw" "host_$APP" $APP $app_pw 
     dokku rabbitmq:link $APP
     echo
     echo "-----> Rabbitmq virtual host for $APP created"
@@ -111,7 +111,7 @@ case "$1" in
     ;;
   rabbitmq:start)
     if [[ "$id" != "" ]]; then
-        echo "Postgresql container already running with ID: ${id}"
+        echo "Rabbitmq container already running with ID: ${id}"
     else
         image=$(docker images | grep "$CONTAINER_IMAGE" |  awk '{print $3}')
         if [[ -z $image ]]; then
