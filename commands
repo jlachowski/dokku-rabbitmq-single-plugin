@@ -70,7 +70,7 @@ case "$1" in
         app_pw=$(cat "${app_pw_file}")
     else
         app_pw=$(openssl rand -base64 16|base64)
-        echo $admin_pw > "${app_pw_file}"
+        echo $app_pw > "${app_pw_file}"
         chmod 600 "${app_pw_file}"
     fi
     admin_pw=$(cat "$HOST_DIR/admin_pw")
