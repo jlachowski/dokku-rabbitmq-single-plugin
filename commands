@@ -103,6 +103,9 @@ case "$1" in
     #TODO: unlink $APP, remove it's virtual host and password file
     curl -i -u $RABBITMQ_ADMIN:$admin_pw -H "content-type:application/json" -XDELETE http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/users/$APP
     curl -i -u $RABBITMQ_ADMIN:$admin_pw -H "content-type:application/json" -XDELETE http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/vhosts/host_$APP
+    app_pw_file="$HOST_DIR/pass_$APP"
+    if [[ -e "${app_pw_file}" ]]; then
+        rm -f "$app_pw_file"
     dokku config:unset $APP BROKER_SCHEME BROKER_USERNAME BROKER_PASSWORD BROKER_PATH
     echo
     echo "-----> Rabbitmq virtual host for $APP removed"
