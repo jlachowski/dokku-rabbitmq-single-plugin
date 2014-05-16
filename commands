@@ -69,7 +69,7 @@ case "$1" in
     if [[ -e "${app_pw_file}" ]]; then
         app_pw=$(cat "${app_pw_file}")
     else
-        app_pw=$(openssl rand -base64 32|base64)
+        app_pw=$(openssl rand -base64 16|base64)
         echo $admin_pw > "${app_pw_file}"
         chmod 600 "${app_pw_file}"
     fi
@@ -101,7 +101,9 @@ case "$1" in
 
     admin_pw=$(cat "$HOST_DIR/admin_pw")
     #TODO: unlink $APP, remove it's virtual host and password file
-    dokku config:unset $APP BROKER
+    curl -i -u $RABBITMQ_ADMIN:$admin_pw -H "content-type:application/json" -XDELETE http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/users/$APP
+    curl -i -u $RABBITMQ_ADMIN:$admin_pw -H "content-type:application/json" -XDELETE http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/vhosts/host_$APP
+    dokku config:unset $APP BROKER_SCHEME BROKER_USERNAME BROKER_PASSWORD BROKER_PATH
     echo
     echo "-----> Rabbitmq virtual host for $APP removed"
     ;;
