@@ -155,8 +155,9 @@ case "$1" in
     ;;
   help)
     cat && cat<<EOF
-    rabbitmq:create <app>  Create a rabbitmq virtual host
-    rabbitmq:delete <app>  Delete specified rabbitmq database
+    rabbitmq:create <app>  Create a rabbitmq virtual host/user
+    rabbitmq:delete <app>  Delete specified rabbitmq vhost/user
+    rabbitmq:rebuild <app> Rebuild specified rabbitmq vhost/user
     rabbitmq:start         Start the rabbitmq docker container if it isn't running
     rabbitmq:stop          Stop the rabbitmq docker container
     rabbitmq:status        Shows status of rabbitmq
