@@ -104,6 +104,7 @@ case "$1" in
     check_exists
     dokku rabbitmq:delete $APP
     dokku rabbitmq:creator $APP
+    ;;
   rabbitmq:list)
     #TODO: list virtual hosts here
     echo "Not yet implemented"
