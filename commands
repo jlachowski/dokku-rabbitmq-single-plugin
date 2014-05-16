@@ -65,13 +65,13 @@ case "$1" in
     check_app
     check_exists
 
-    app_pw_file="$HOST_DIR/pass_$APP"
-    if [[ -e "${app_pw_file}" ]]; then
-        app_pw=$(cat "${app_pw_file}")
+    app_pw_file=
+    if [[ -e "$HOST_DIR/pass_$APP" ]]; then
+        app_pw=$(cat "$HOST_DIR/pass_$APP")
     else
         app_pw=$(openssl rand -base64 16|base64)
-        echo $app_pw > "${app_pw_file}"
-        chmod 600 "${app_pw_file}"
+        echo $app_pw > "$HOST_DIR/pass_$APP"
+        chmod 600 "$HOST_DIR/pass_$APP"
     fi
     admin_pw=$(cat "$HOST_DIR/admin_pw")
 
