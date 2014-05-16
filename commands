@@ -103,7 +103,7 @@ case "$1" in
     check_app
     check_exists
     dokku rabbitmq:delete $APP
-    dokku rabbitmq:creator $APP
+    dokku rabbitmq:create $APP
     ;;
   rabbitmq:list)
     #TODO: list virtual hosts here
