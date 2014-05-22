@@ -106,8 +106,11 @@ case "$1" in
     dokku rabbitmq:create $APP
     ;;
   rabbitmq:list)
-    #TODO: list virtual hosts here
-    echo "Not yet implemented"
+    check_container
+    #TODO: parse the output
+    echo "List of all vhosts on rabbitmq server"
+    admin_pw=$(cat "$HOST_DIR/admin_pw")
+    curl -i -u $RABBITMQ_ADMIN:$admin_pw http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/vhosts
     ;;
   rabbitmq:start)
     if [[ "$id" != "" ]]; then
