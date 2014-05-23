@@ -34,7 +34,7 @@ check_container() {
   fi
 }
 
-id=$(docker ps | grep "$CONTAINER_IMAGE":latest |  awk '{print $1}')
+id=$(docker ps | grep "$CONTAINER_NAME" |  awk '{print $1}')
 if [[ -n "$id" ]]; then
   rabbitmq_private_ip=$(docker inspect ${id} | grep IPAddress | awk '{ print $2 }' | tr -d ',"')
 fi
@@ -54,7 +54,6 @@ case "$1" in
     check_app
     check_exists
 
-    app_pw_file=
     if [[ -e "$HOST_DIR/pass_$APP" ]]; then
         app_pw=$(cat "$HOST_DIR/pass_$APP")
     else
@@ -79,6 +78,7 @@ case "$1" in
     dokku link:create "$APP" "$CONTAINER_NAME" "$PLUGIN_ALIAS"
     # Write BROKER_URL to app's ENV file using dokku command
     dokku config:set $APP "BROKER_SCHEME=amqp" "BROKER_USERNAME=$APP" "BROKER_PASSWORD=$app_pw" "BROKER_PATH=/host_$APP"
+    dokku rabbitmq:config_save
     echo
     echo "-----> $APP linked to $CONTAINER_NAME container"
     ;;
@@ -95,6 +95,7 @@ case "$1" in
         rm -f "$app_pw_file"
     fi
     dokku config:unset $APP BROKER_SCHEME BROKER_USERNAME BROKER_PASSWORD BROKER_PATH
+    dokku rabbitmq:config_save
     echo
     echo "-----> Rabbitmq virtual host for $APP removed"
     ;;
@@ -112,6 +113,25 @@ case "$1" in
     admin_pw=$(cat "$HOST_DIR/admin_pw")
     curl -i -u $RABBITMQ_ADMIN:$admin_pw http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/vhosts
     ;;
+  rabbitmq:config)
+    check_container
+    admin_pw=$(cat "$HOST_DIR/admin_pw")
+    curl -u $RABBITMQ_ADMIN:$admin_pw http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/definitions
+    ;;
+  rabbitmq:config_save)
+    check_container
+    admin_pw=$(cat "$HOST_DIR/admin_pw")
+    curl -s -u $RABBITMQ_ADMIN:$admin_pw http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/definitions > "$HOST_DIR/config.json"
+    echo "-----> Config saved"
+    ;;
+  rabbitmq:config_load)
+    check_container
+    admin_pw=$(cat "$HOST_DIR/admin_pw")
+    if [[ -e "$HOST_DIR/config.json" ]]; then
+        curl -s -u $RABBITMQ_ADMIN:$admin_pw -H "content-type:application/json" -X POST -d "@$HOST_DIR/config.json" http://$rabbitmq_private_ip:$RABBITMQ_ADMIN_PORT/api/definitions
+	echo "-----> Config loaded"
+    fi
+    ;;
   rabbitmq:start)
     if [[ "$id" != "" ]]; then
         echo "Rabbitmq container already running with ID: ${id}"
@@ -121,34 +141,44 @@ case "$1" in
             echo "Rabbitmq image not found... Did you run 'dokku plugins-install' ?"
             exit 1
         fi
-        if [[ ! -d "$HOST_DIR" ]]; then
-            mkdir -p "$HOST_DIR"
-        fi
-        # Check if an existing storage volume exists
-        if [[ -d "$HOST_DIR/volume" ]]; then
-            echo
-            echo "-----> Reusing rabbitmq storage"
-        else
-            mkdir -p "$HOST_DIR/volume"
-        fi
+	container=$(docker ps -a | grep "$CONTAINER_NAME" | awk '{print $1}')
+	if [[ ! -z $container ]]; then
+	    id=$container
+	    docker start "$id" > /dev/null
+	else
+		if [[ ! -d "$HOST_DIR" ]]; then
+		    mkdir -p "$HOST_DIR"
+		fi
+		# Check if an existing storage volume exists
+		if [[ -d "$HOST_DIR/volume" ]]; then
+		    echo
+		    echo "-----> Reusing rabbitmq storage"
+		else
+		    mkdir -p "$HOST_DIR/volume"
+		fi
 
-        if [[ -e "$HOST_DIR/admin_pw" ]]; then
-            admin_pw=$(cat "$HOST_DIR/admin_pw")
-        else
-            admin_pw=$(openssl rand -base64 32|base64)
-            echo $admin_pw > "$HOST_DIR/admin_pw"
-            chmod 600 "$HOST_DIR/admin_pw"
-        fi
-        volume="$HOST_DIR/volume:/opt/rabbitmq"
-        # Launch container
-        id=$(docker run -v $volume --name $CONTAINER_NAME -d $CONTAINER_IMAGE /usr/bin/start-rabbitmq.sh $admin_pw)
+		if [[ -e "$HOST_DIR/admin_pw" ]]; then
+		    admin_pw=$(cat "$HOST_DIR/admin_pw")
+		else
+		    admin_pw=$(openssl rand -base64 32|base64)
+		    echo $admin_pw > "$HOST_DIR/admin_pw"
+		    chmod 600 "$HOST_DIR/admin_pw"
+		fi
+		volume="$HOST_DIR/volume:/opt/rabbitmq"
+		# Launch container
+		id=$(docker run -v $volume --name $CONTAINER_NAME -d $CONTAINER_IMAGE /usr/bin/start-rabbitmq.sh $admin_pw)
+		sleep 5
+		dokku rabbitmq:config_load
+	fi
         echo
         echo "-----> Rabbitmq container started: $CONTAINER_NAME (ID: ${id})"
     fi
     ;;
   rabbitmq:stop)
     check_container
-    docker stop ${id}
+    dokku rabbitmq:config_save
+    docker stop ${id} > /dev/null
+    echo "Rabbitmq container stopped"
     ;;
   rabbitmq:status)
     if [[ "$id" != "" ]]; then
