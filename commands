@@ -1,5 +1,5 @@
-#!/bin/bash
-set -e;
+#!/usr/bin/env bash
+set -eo pipefail; [[ $DOKKU_TRACE ]] && set -x
 
 APP=$2
 
@@ -197,5 +197,9 @@ case "$1" in
     rabbitmq:status        Shows status of rabbitmq
     rabbitmq:list          List all virtual hosts
 EOF
+    ;;
+
+  *)
+    exit $DOKKU_NOT_IMPLEMENTED_EXIT
     ;;
 esac
