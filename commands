@@ -94,6 +94,7 @@ case "$1" in
     if [[ -e "${app_pw_file}" ]]; then
         rm -f "$app_pw_file"
     fi
+    dokku link:delete "$APP" "$CONTAINER_NAME" "$PLUGIN_ALIAS"
     dokku config:unset $APP BROKER_SCHEME BROKER_USERNAME BROKER_PASSWORD BROKER_PATH
     dokku rabbitmq:config_save
     echo
